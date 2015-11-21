@@ -26,15 +26,31 @@ execute() {
 
 execute cd $thisDir ;
 
-echo $$ > /var/tmp/chef-zero.pid0 ;
+pid0="$$" ;
+echo "$pid0" > /var/tmp/chef-zero.pid0 ;
+echo "pid0 = $pid0" ;
 
-nohup chef-zero --generate-keys > /var/tmp/chef-zero.out 2>&1 ;
+if [[ ! -e /var/tmp/.chef-zero.pem ]] ; then
+  openssl req -nodes -new -x509 -keyout /var/tmp/.chef-zero.pem -out /var/tmp/.chef-zero.cert ;
+fi ;
+
+# nohup chef-zero --generate-keys > /var/tmp/chef-zero.out 2>&1 & echo "Backgrounding chef-zero." ; 
+nohup chef-zero --generate-keys > /var/tmp/chef-zero.out 2>&1 & echo "Backgrounding chef-zero." ; 
 
 sleep 2 ;
-childPid=`ps -ef | awk '{print $2 " " $3 }' | egrep "^$$ " | awk '{print $2}' ` ;
+pidList1=`ps -ef | grep 'chef.zero' ` ;
+echo -e "DEBUG: pidList1\n$pidList1" ;
+pidList2=`echo "$pidList1" | awk '{print $2 " " $3}'` ;
+echo -e "DEBUG: pidList2\n$pidList2" ;
+pidList3=`echo "$pidList2" | egrep "^[0-9][0-9]* $pid0\$" ` ;
+echo -e "DEBUG: pidList3\n$pidList3" ;
+childPid=`echo "$pidList3" | awk '{print $1}' ` ;
+# childPid=`ps -ef | grep 'chef.zero' | awk '{print $2 " " $3 }' | egrep "^[a-zA-Z0-9][a-zA-Z0-9]* $pid0 | awk '{print $1}' " ` ;
 
-echo "Is that really the child pid?" ;
-ps -ef | egrep "^[a-zA-Z0-9][a-zA-Z0-9]* $childPid " ;
+echo "Is that really the child pid ($childPid)?" ;
+ps -ef | sed -e 's/^[^ \t][^ \t]*[ \t][ \t]*//' | egrep "^$childPid " ;
 echo $childPid > /var/tmp/chef-zero.pid ;
+# # # Permits the user to do something like this:
+# # # # kill -15 `cat /var/tmp/chef-zero.pid`
 
 #
