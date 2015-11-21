@@ -1,6 +1,40 @@
 #!/bin/bash
 
-echo $$ > /var/tmp/chef-zero.pid ;
-chef-zero
+thisDir=$(dirname $0) ;
+pwdX=$(pwd) ;
+abs=`dirname $0 | sed -e 's/^\(.\).*$/\1/'` ;
+if [[ -z $thisDir || "$thisDir" == "." ]] ; then
+  thisDir="$pwdX" ;
+else
+  if [[ "$abs" != "/" ]] ; then
+    thisDir="$pwdX/$thisDir" ;
+  fi ;
+fi ;
+scriptBase=$(basename $0) ;
+
+execute() {
+  cmdX="$@" ;
+  "$@" ;
+  error=$? ;
+  if [[ -z $error || "$error" == "" || "$error" == "0" ]] ; then
+    true ;
+  else
+    echo "ERROR: From command $cmdX: '$error'." 1>&2 ;
+    exit $error ;
+  fi ;
+}
+
+execute cd $thisDir ;
+
+echo $$ > /var/tmp/chef-zero.pid0 ;
+
+nohup chef-zero --generate-keys > /var/tmp/chef-zero.out 2>&1 ;
+
+sleep 2 ;
+childPid=`ps -ef | awk '{print $2 " " $3 }' | egrep "^$$ " | awk '{print $2}' ` ;
+
+echo "Is that really the child pid?" ;
+ps -ef | egrep "^[a-zA-Z0-9][a-zA-Z0-9]* $childPid " ;
+echo $childPid > /var/tmp/chef-zero.pid ;
 
 #
